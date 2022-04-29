@@ -1,0 +1,55 @@
+#%RAML 1.0
+title: sys-userStoreAPI
+types:
+  user: !include /library/user/user.raml
+  userToCreate: !include /library/user/user-to-create.raml
+/user:
+  get:
+    description: get all users
+    responses:
+      200:
+        body:
+          application/json:
+            type: user[]
+  post:
+    description: create user
+    body:
+      application/json:
+        type: userToCreate[]
+    responses:
+      200:
+        body:
+          application/json: 
+           type: user[] 
+  put:
+    description: update users
+    body:
+      application/json:
+    responses:
+      200:
+        body:
+          application/json:
+            type: user[]
+  /{Id}:
+    get:
+      description: get user by id
+      responses:
+        200:
+          body:
+            application/json:
+    patch:
+      description: update user by id
+      body:
+        application/json:
+      responses:
+        200:
+          body:
+            application/json:
+    delete:
+      description: delete user by id
+      responses:
+        200:
+          body:
+            application/json:
+              
+    

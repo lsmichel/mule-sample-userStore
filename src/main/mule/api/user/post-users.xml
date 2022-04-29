@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd">
+	<flow name="post-users-implementationFlow" doc:id="86a6b1a3-7f14-4902-bda8-4c03bf27231d" >
+		<ee:transform doc:name="Transform Message" doc:id="2666f473-cf83-43eb-b86d-e39253fa3317" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="users" ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<db:select doc:name="Select" doc:id="fa17fb38-d48f-4682-91c7-2bb90050e8e7" config-ref="Database_Config" target="counter" targetValue="#[payload[0].maxId as Number +1]">
+			<db:sql><![CDATA[Select count(*) as maxId from utilisateur ]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="22066035-8c92-4fde-aae0-b96098a113a2">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+
+---
+
+vars.users map ((item, index) ->{
+    "id": index + vars.counter ,
+    "nom": item.lastName ,
+    "prenom":  item.firstName ,
+    "genre": item.gender ,
+    "email": item.email ,
+    "date_naissance": item.birthDate as Date ,
+    "lieu_naissance": item.placeOfBirth ,
+    "motDePass": item.password
+} )]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<db:bulk-insert doc:name="Bulk insert" doc:id="26fd7a7e-bee0-42ea-b804-48d3c64ecb45" config-ref="Database_Config" targetValue="#[output application/json ---  payload]">
+			<db:sql><![CDATA[Insert into utilisateur(id , nom , prenom , email , date_naissance , lieu_naissance , genre) 
+Values(:id , :nom , :prenom , :email ,:date_naissance , :lieu_naissance , :genre) ]]></db:sql>
+		</db:bulk-insert>
+		<ee:transform doc:name="Transform Message" doc:id="3d9a5a5a-6c49-40ff-8535-afee648fef64">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"userSize":sizeOf(payload) ,
+	"lastIndex": vars.counter ,
+	"data": payload
+	
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+			</ee:variables>
+		</ee:transform>
+		<jms:publish doc:name="Publish" doc:id="ea32e441-aa82-4ca8-92be-f4876e1d3291" config-ref="JMS_Config" destination="userStoreAppMQ"/>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="4ae76aa5-282c-46df-bafd-454ce2d11766" >
+				<logger level="INFO" doc:name="Logger" doc:id="3f7e0c66-82ca-474e-9fcd-b7e1a5515b7f" />
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<flow name="post-usersFlow" doc:id="68f45d34-244c-4352-9eaa-3697756beb58" >
+		<async doc:name="Async" doc:id="e6bf792c-5f1c-44f7-ae2b-993dcd95ee8a">
+			<foreach doc:name="For Each" doc:id="414fbd67-0682-4da6-8fc0-7bb9c1293f2f" batchSize="1000">
+				<logger level="INFO" doc:name="Logger" doc:id="eec3e372-3cb3-4e34-ae35-c0e6d3b119a6" />
+		</foreach>
+		</async>
+	</flow>
+	
+</mule>
